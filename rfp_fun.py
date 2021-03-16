@@ -165,6 +165,8 @@ def idf_rfp(mequt_lon_p,mequt_lat_p,Brm_l10,phi,theta):
 #     rfp_lon: longitude of the points in reversed flux patches
     rfp_lat=[]
     rfp_lon=[]
+    e_lat=[]
+    e_lon=[]
     phi=np.around(phi,5)
     theta=np.around(theta,5)
     for i in np.arange(len(phi)):
@@ -188,14 +190,31 @@ def idf_rfp(mequt_lon_p,mequt_lat_p,Brm_l10,phi,theta):
                 
                 rfp_lat=np.append(rfp_lat,theta[r1:r2][ir[:]])
                 rfp_lon=np.append(rfp_lon,phi[i]*np.ones(len(ir)))
+                
+                if ir.size>0:
+                    e_lat=np.append(e_lat,theta[r1:r2][ir[0]])
+                    e_lat=np.append(e_lat,theta[r1:r2][ir[-1]])
+                    e_lon=np.append(e_lon,phi[i]*np.ones(2))
+                elif ir.size==1:
+                    e_lat=np.append(e_lat,theta[r1:r2][ir[-1]])
+                    e_lon=np.append(e_lon,phi[i]*np.ones(1))
+                
                 p=p+1
                 r1=r2+1
                 
             [ir]=np.where(Brm_l10[r2+1:,i]<0) 
             rfp_lat=np.append(rfp_lat,theta[r2+1:][ir[:]])
             rfp_lon=np.append(rfp_lon,phi[i]*np.ones(len(ir)))
+            
+            if ir.size>0:
+                e_lat=np.append(e_lat,theta[r2+1:][ir[0]])
+                e_lat=np.append(e_lat,theta[r2+1:][ir[-1]])
+                e_lon=np.append(e_lon,phi[i]*np.ones(2))
+            elif ir.size==1:
+                e_lat=np.append(e_lat,theta[r2+1:][ir[-1]])
+                e_lon=np.append(e_lon,phi[i]*np.ones(1))
         
-    return(rfp_lon,rfp_lat)    
+    return(rfp_lon,rfp_lat,e_lon,e_lat)    
 
 
 ################
@@ -228,8 +247,12 @@ def idf_rfp(mequt_lon_p,mequt_lat_p,Brm_l10,phi,theta):
 
 def get_area2rfp(rfp_lat,lat_w,lon_w):
 ## calculate the area of the reversed flux patches
-#input
-#     
+#input 
+#     rfp_lat: colatitude of the points in reversed flux patches
+#       lat_w: latitude grid space 
+#       lon_w: longitude grid space
+#output 
+#         Sp: area of the reversed flux patches grid points
     r=3480
     S_rfp=[]
     for i_rfp in np.arange(len(rfp_lat)):
