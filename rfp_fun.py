@@ -44,6 +44,7 @@ def legendre(l,theta):
             
     return(Pnm)
 
+######
 
 def get_Br(L,phim,thetam,g,h,r):
 # calculate Br on CMB
@@ -75,6 +76,7 @@ def get_Br(L,phim,thetam,g,h,r):
     Brm=-mZ
     return(Brm)
 
+#######
 
 def idf_mequt(Brm,phi,theta):
 # identify the magnetic equator from Br matix
@@ -90,6 +92,10 @@ def idf_mequt(Brm,phi,theta):
     [ix,iy]=np.where(signal_br<=0)
     ilat=theta[ix]
     ilon=phi[iy]
+    if len(ilon)==len(phi):
+        if (np.around(np.sort(ilon),5)==np.around(phi,5)).all():
+            return(ilat,ilon)
+
     sy=np.argsort(ilon)
     ilon=ilon[sy]
     ilat=ilat[sy]
@@ -97,7 +103,7 @@ def idf_mequt(Brm,phi,theta):
     u_lon_c=np.zeros(len(phi))
     u_lon_o=np.zeros(len(phi))
     for i in np.arange(len(phi)):
-        u_lon_c[k]=np.sum(ilon==phi[i])
+        u_lon_c[k]=np.sum(np.around(ilon,5)==np.around(phi[i],5))
         u_lon_o[k]=phi[i]
         k=k+1
     sc=np.argsort(u_lon_c)
@@ -120,7 +126,7 @@ def idf_mequt(Brm,phi,theta):
         dis_lon=abs(temp_y-mequt_lon[-1])
         dis_lon_i=np.where(dis_lon>180)
         dis_lon[dis_lon_i[0][:]]=dis_lon[dis_lon_i[0][:]]-360
-        temp_dist=(dis_lon)**2+(temp_x-mequt_lat[-1])**2
+        temp_dist=(dis_lon*2)**2+(temp_x-mequt_lat[-1])**2      # rescale lon and lat, increase the scale of lon 10 times 
         nxt_p=np.argmin(temp_dist)                    
         mequt_lat=np.append(mequt_lat,temp_x[nxt_p])
         mequt_lon=np.append(mequt_lon,temp_y[nxt_p])
@@ -133,17 +139,20 @@ def idf_mequt(Brm,phi,theta):
     if dp_i_lon.size==0:
         it_lon=len(mequt_lon)-1
     else:
-        [iil]=np.where(dp_i_lon>=0.99*len(phi))
-        it_lon=dp_i_lon[iil[0]]
+        for d_i in np.arange(len(dp_i_lon)):
+            if len(np.unique(mequt_lon[0:dp_i_lon[d_i]+1])) >= 0.99*len(phi):
+                it_lon=dp_i_lon[d_i]
+                break
         
-    dif_lat=np.around(mequt_lat[1:]-mequt_lat[0:-1],3)
-    [dp_i_lat]=np.where(abs(dif_lat)>60)
-    if dp_i_lat.size==0:
-        it_lat=len(mequt_lat)-1
-    else:
-        it_lat=dp_i_lat[0]
+    # dif_lat=np.around(mequt_lat[1:]-mequt_lat[0:-1],3)
+    # [dp_i_lat]=np.where(abs(dif_lat)>60)
+    # if dp_i_lat.size==0:
+    #     it_lat=len(mequt_lat)-1
+    # else:
+    #     it_lat=dp_i_lat[0]
 
-    it_dp_i=np.min([it_lon,it_lat])
+    # it_dp_i=np.min([it_lon,it_lat])
+    it_dp_i=it_lon
     
     
     mequt_lon_p=mequt_lon[0:it_dp_i+1]
@@ -151,6 +160,7 @@ def idf_mequt(Brm,phi,theta):
           
     return(mequt_lat_p,mequt_lon_p)
 
+#######
 
 def idf_rfp(mequt_lon_p,mequt_lat_p,Brm_l10,phi,theta):
 # identify the reversed flux patches from Br matix
@@ -245,7 +255,7 @@ def idf_rfp(mequt_lon_p,mequt_lat_p,Brm_l10,phi,theta):
 #         rfp_lon_st=np.append(rfp_lon_st,t_lon*np.ones(len(i_s)))
 #     return(rfp_lon_nt,rfp_lat_nt,rfp_lon_st,rfp_lat_st)
 
-def get_area2rfp(rfp_lat,lat_w,lon_w):
+def get_area2rfp(rfp_lat,lat_w,lon_w,r):
 ## calculate the area of the reversed flux patches
 #input 
 #     rfp_lat: colatitude of the points in reversed flux patches
@@ -253,7 +263,7 @@ def get_area2rfp(rfp_lat,lat_w,lon_w):
 #       lon_w: longitude grid space
 #output 
 #         Sp: area of the reversed flux patches grid points
-    r=3480
+#    r=3480
     S_rfp=[]
     for i_rfp in np.arange(len(rfp_lat)):
         l_p1=np.sin((rfp_lat[i_rfp]-lat_w/2)*np.pi/180)*r*lon_w*np.pi/180
@@ -263,3 +273,175 @@ def get_area2rfp(rfp_lat,lat_w,lon_w):
         S_rfp=np.append(S_rfp,s_t)
     Sp=np.sum(S_rfp)
     return(Sp)
+
+##
+
+def get_gN(g_lat,g_lon,lat_w,lon_w,Br,phi,theta,r):
+## calculate the area of the reversed flux patches
+#input 
+#     rfp_lat: colatitude of the points in reversed flux patches
+#       lat_w: latitude grid space 
+#       lon_w: longitude grid space
+#output 
+#         Sp: area of the reversed flux patches grid points
+#    r=3480
+    gN=[]
+    for i_p in np.arange(len(g_lat)):
+        l_p1=np.sin((g_lat[i_p]-lat_w/2)*np.pi/180)*r*lon_w*np.pi/180
+        l_p2=np.sin((g_lat[i_p]+lat_w/2)*np.pi/180)*r*lon_w*np.pi/180
+        h=lat_w*np.pi*r/180
+        s_t=(l_p1+l_p2)*h/2
+        [i_th]=np.where(np.around(theta,5)==np.around(g_lat[i_p],5))
+        [i_ph]=np.where(np.around(phi,5)==np.around(g_lon[i_p],5))
+        gt=s_t*Br[i_th,i_ph]*np.cos(g_lat[i_p]*np.pi/180)
+        gN=np.append(gN,gt)
+    gNm=np.sum(gN)
+    return(gNm)
+
+##
+
+def bw_rfp(mequt_lon_p,mequt_lat_p,Brm_l10,phi,theta):
+# identify the reversed flux patches from Br matix
+#input 
+#     mequt_lat_p: colatitude of the points in magnetic equator 
+#     mequt_lon_p: longitude of the points in magnetic equator   
+#     Brm_l10: Br matrix
+#     phi: longitude grid array
+#     theta: colatitude grid array
+#output
+#     rfp_lat: colatitude of the points in reversed flux patches
+#     rfp_lon: longitude of the points in reversed flux patches
+
+    bw=np.zeros(np.shape(Brm_l10),dtype='int32')
+    phi=np.around(phi,5)
+    theta=np.around(theta,5)
+    for i in np.arange(len(phi)):
+#        tag_lon=np.around(phi[i],5)
+        [i_lon]=np.where(np.around(mequt_lon_p,5)==np.around(phi[i],5))
+        tag_lat=mequt_lat_p[i_lon[:]]
+        r1=0
+        p=2
+        if len(tag_lat)==0:
+            continue
+        else:
+            for j in np.arange(len(tag_lat)):
+                tag_lat=np.sort(tag_lat)
+                #tag_lat=tag_lat[sl]
+                [i_lat]=np.where(theta==np.around(tag_lat[j],5))
+                r2=i_lat[0]
+                if (p & 1)==0:
+                    [ir]=np.where(Brm_l10[r1:r2,i]>0)
+                else:
+                    [ir]=np.where(Brm_l10[r1:r2,i]<0)   
+               
+                bw[r1:r2,i][ir]=np.ones(len(ir))
+                
+                p=p+1
+                r1=r2+1
+                
+            [ir]=np.where(Brm_l10[r2+1:,i]<0) 
+            bw[r2+1:,i][ir]=np.ones(len(ir))
+            
+        
+    return(bw) 
+
+###
+
+## find the peak of the patch
+def pek_intensity(Br_f,label_bw,theta,phi):
+    bn=np.size(Br_f,axis=0)
+    bm=np.size(Br_f,axis=1)
+    Bp=np.zeros((bn+2,bm+2))
+    Bp[1:-1,0]=Br_f[:,-1]
+    Bp[1:-1,1:-1]=Br_f
+    Bp[1:-1,-1]=Br_f[:,0]
+    Bp[0,:]=Bp[1,:]
+    Bp[-1,:]=Bp[-2,:]
+    pekh=[]
+    pekhx=[]
+    pekhy=[]
+    pekl=[]
+    peklx=[]
+    pekly=[]
+    pek_bwlabel=np.array([],dtype='int32')
+    pek_bwl_l=np.array([],dtype='int32')
+    pek_bwl_h=np.array([],dtype='int32')
+    for ilab in range(1,max(label_bw.flatten())+1):
+        [ir, ic] = np.where(label_bw == ilab)
+        for r,c in zip(ir,ic):
+            pt=np.zeros(8)
+            p=Bp[r+1,c+1]
+            pt[0]=Bp[r,c]
+            pt[1]=Bp[r,c+1]
+            pt[2]=Bp[r,c+2]
+            pt[3]=Bp[r+1,c]
+            pt[4]=Bp[r+1,c+2]
+            pt[5]=Bp[r+2,c]
+            pt[6]=Bp[r+2,c+1]
+            pt[7]=Bp[r+2,c+2]
+            
+            if all((p-pt) > 0):
+                pekh=np.append(pekh,p)
+                pekhx=np.append(pekhx,theta[r])
+                pekhy=np.append(pekhy,phi[c])
+                pek_bwl_h=np.append(pek_bwl_h,ilab)
+            elif all((p-pt) < 0):
+                pekl=np.append(pekl,p)
+                peklx=np.append(peklx,theta[r])
+                pekly=np.append(pekly,phi[c])
+                pek_bwl_l=np.append(pek_bwl_l,ilab)
+            
+                
+    pek=np.append(pekl,pekh)
+    pekx=np.append(peklx,pekhx)
+    peky=np.append(pekly,pekhy)
+    pek_bwlabel=np.append(pek_bwl_l,pek_bwl_h)
+    
+    return(pek,pekx,peky,pek_bwlabel)
+
+##
+# transform r theta phi to x y z
+# theta phi is in degree
+def rtp2xyz(r,theta,phi):
+    theta=theta/180*np.pi
+    phi=phi/180*np.pi
+    z=r*np.cos(theta)
+    x=r*np.sin(theta)*np.cos(phi)
+    y=r*np.sin(theta)*np.sin(phi)
+    return(x,y,z)
+
+
+## 
+# transform x y z to r theta phi
+# theta phi are in degree
+def xyz2rtp(xx,yy,zz):
+    phi_a=[]
+    theta_a=[]
+    X=[]
+    Y=[]
+    Z=[]
+    X=np.append(X,xx)
+    Y=np.append(Y,yy)
+    Z=np.append(Z,zz)
+    for x, y, z in zip(X, Y, Z):
+        r=np.sqrt(x*x+y*y+z*z)
+        h=np.sqrt(x*x+y*y)
+        if z >= 0:
+            theta=np.arcsin(h/r)/np.pi*180
+        else:
+            theta=180-np.arcsin(h/r)/np.pi*180
+            
+        if x>=0 and y>=0:
+            phi=np.arcsin(y/h)/np.pi*180
+        elif x>=0 and y<0:
+            phi=360+np.arcsin(y/h)/np.pi*180
+        elif x<0 and y>=0:
+            phi=180-np.arcsin(y/h)/np.pi*180
+        elif x<0 and y<0:
+            phi=-np.arcsin(y/h)/np.pi*180 + 180
+        phi_a=np.append(phi_a,phi)
+        theta_a=np.append(theta_a,theta)
+    return(theta_a,phi_a)
+        
+        
+            
