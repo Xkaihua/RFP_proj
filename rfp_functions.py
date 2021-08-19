@@ -6,6 +6,76 @@ Created on Mon Aug 16 11:19:15 2021
 """
 import numpy as np
 
+def legendre(l,theta):
+# calculate the Schmidt seminormalized associated Legendre functions
+# input 
+#       l: the max degree of  Legendre functions
+#       theta: grid points where you want to calculate the Legendre functions
+# output
+#       Pnm:  values of Legendre functions with max degree l at theta
+    rad_theta=theta*np.pi/180
+    lt=len(theta)
+    p00=np.ones(lt)
+    p10=np.cos(rad_theta)
+    p11=np.sin(rad_theta)
+    Pm=np.zeros((l+1,lt))
+    Pm[0,:]=p00
+    Pm[1,:]=p11
+    k=2
+    while k<l+1:
+        m=k
+        w1=(2*m-1)/(2*m)
+        Pm[k,:]=np.sqrt(w1)*np.sin(rad_theta)*Pm[k-1,:]
+        k=k+1
+    Pnm=np.zeros((l+1,l+1,lt))
+    Pnm[0,0,:]=Pm[0,:]
+    Pnm[1,0,:]=p10
+    Pnm[1,1,:]=Pm[1,:]
+    for i in np.arange(2,l+1):
+        Pnm[i,i,:]=Pm[i,:]
+        for j in np.arange(i):
+            pn_1m=Pnm[i-1,j,:]
+            pn_2m=Pnm[i-2,j,:]
+            n=i
+            Rnm=np.sqrt(np.square(n)-np.square(j))
+            Rn_1m=np.sqrt(np.square(n-1)-np.square(j))
+            Pnm[i,j,:]=((2*n-1)*np.cos(rad_theta)*pn_1m-Rn_1m*pn_2m)/Rnm
+           
+            
+    return(Pnm)
+
+######
+
+def get_Br(L,phim,thetam,g,h,r=3480):
+# calculate Br on CMB
+# input
+#      L: max degree to calculate Br
+#      phim: colatitude(unit:degree) of the grid points
+#      thetam: longitude(unit:degree) of the grid points
+#      g,h: gauss coefficients g and h
+#      r: radius used to calculate the field, default is 3480
+# output
+#       Brm: radial magnetic field Br
+    a=6371
+    rad_theta=thetam.flatten('F')*np.pi/180
+    rad_phi=phim.flatten('F')*np.pi/180
+    pnm=legendre(L,thetam.flatten('F'))
+    zm=np.zeros((L,len(rad_theta)))
+    for i in np.arange(L):
+        zn=np.zeros((i+2,len(rad_theta)))
+        for j in np.arange(i+2): 
+            n=i+1
+#            Rnm=np.sqrt(np.square(n)-np.square(j))
+            kn=np.power(a/r,n+2)*(n+1)
+            zn[j,:]=kn*((g[i,j]*np.cos(j*rad_phi)+h[i,j]*np.sin(j*rad_phi))*pnm[n,j,:])
+        zm[i,:]=np.sum(zn,axis=0)
+    Z=np.sum(zm,axis=0)*(-1)
+    Sz=phim.shape
+    mZ=Z.reshape(Sz[:],order='F')
+    Brm=-mZ
+    return(Brm)
+
+
 def idf_mequt(Brm,phi,theta):
 # identify the magnetic equator from Br matix
 #input 
