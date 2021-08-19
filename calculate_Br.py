@@ -16,7 +16,7 @@ gmf_l=Path('cov_obsx1_aver_coefs_1yr_mat/')  #folder of gauss coefficients
 pwd=os.getcwd()
 
 flist=os.listdir(gmf_l)
-L=3                                  #max degree used to identify the magnetic equator
+L=3                                  #max degree used to calculate Br
 r=3480                               # radius of CMB
 grid_space=0.45                        # grid space           
 theta=np.arange(grid_space,180,grid_space)
